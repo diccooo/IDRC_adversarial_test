@@ -17,7 +17,7 @@ def arg_filter(arg):
     res = []
     for w in arg:
         if w.isalpha():
-            res.append(w.lower())
+            res.append(w)
     return res
 
 def preprocess(splitting):
@@ -58,8 +58,8 @@ def preprocess(splitting):
         sense_split = corpus.ConnHeadSemClass1.split('.')
         sense_l2 = '.'.join(sense_split[0:2])
         if sense_l2 in selected_sense:
-            arg1 = arg_filter(corpus.arg1_words(lemmatize=True))
-            arg2 = arg_filter(corpus.arg2_words(lemmatize=True))
+            arg1 = arg_filter(corpus.arg1_words())
+            arg2 = arg_filter(corpus.arg2_words())
             if corpus.Section in train_sec:
                 arg1_train.append(arg1)
                 arg2_train.append(arg2)
