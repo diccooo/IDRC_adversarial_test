@@ -78,15 +78,16 @@ def preprocess(splitting):
             if corpus.Conn2 is not None:
                 sense_split = corpus.Conn2SemClass1.split('.')
                 sense_l2 = '.'.join(sense_split[0:2])
-                if corpus.Section in train_sec:
-                    arg1_train.append(arg1)
-                    arg2_train.append(arg2)
-                    conn_train.append(corpus.Conn2.split())
-                    sense_train.append([sense_l2, sense_split[0]])
-                elif corpus.Section in dev_sec:
-                    sense2_dev.append([sense_l2, sense_split[0]])
-                elif corpus.Section in test_sec:
-                    sense2_test.append([sense_l2, sense_split[0]])
+                if sense_l2 in selected_sense:
+                    if corpus.Section in train_sec:
+                        arg1_train.append(arg1)
+                        arg2_train.append(arg2)
+                        conn_train.append(corpus.Conn2.split())
+                        sense_train.append([sense_l2, sense_split[0]])
+                    elif corpus.Section in dev_sec:
+                        sense2_dev.append([sense_l2, sense_split[0]])
+                    elif corpus.Section in test_sec:
+                        sense2_test.append([sense_l2, sense_split[0]])
             else:
                 if corpus.Section in dev_sec:
                     sense2_dev.append([None, None])
