@@ -1,13 +1,11 @@
 import torch
 import torch.utils.data as torchdata
-import argparse
 
-parser = argparse.ArgumentParser()
-parser.add_argument('func', type=str)
+from config import Config
 
-class Data(torchdata.Dataset):
+class Dataset(torchdata.Dataset):
     def __init__(self, data_path):
-        super(Data, self).__init__()
+        super(Dataset, self).__init__()
         self.d1, self.d2, self.d3, self.d4 = torch.load(data_path)
 
     def __getitem__(self, index):
@@ -16,17 +14,21 @@ class Data(torchdata.Dataset):
     def __len__(self):
         return len(self.d4)
 
-def testdata():
-    train_loader = torchdata.DataLoader(
-        Data('./data/processed/train.pkl'), batch_size=128, shuffle=True, drop_last=False
-    )
-    dev_loader = torchdata.DataLoader(
-        Data('./data/processed/dev.pkl'), batch_size=128, shuffle=True, drop_last=False
-    )
-    test_loader = torchdata.DataLoader(
-        Data('./data/processed/test.pkl'), batch_size=128, shuffle=True, drop_last=False
-    )
-    for loader in [train_loader, dev_loader, test_loader]:
+class Data(object):
+    def __init__(self, use_cuda):
+        kwargs = {'batch_size':Config.batch_size, 'shuffle':Config.shuffle, 'drop_last':False}
+        if use_cuda:
+            kwargs['num_workers'] = 1
+            kwargs['pin_memory'] = True
+        # a1, a2_i, a2_a, sense
+        self.train_loader = torchdata.DataLoader(Dataset('./data/processed/train.pkl'), **kwargs)
+        # a1, a2, sense1, sense2
+        self.dev_loader = torchdata.DataLoader(Dataset('./data/processed/dev.pkl'), **kwargs)
+        self.test_loader = torchdata.DataLoader(Dataset('./data/processed/test.pkl'), **kwargs)
+
+def test():
+    data = Data(False)
+    for loader in [data.train_loader, data.dev_loader, data.test_loader]:
         res = {}
         for d in loader:
             l = []
@@ -40,13 +42,5 @@ def testdata():
             print(i, '*', res[i])
         print('-' * 100)
 
-
-def main():
-    A = parser.parse_args()
-    if A.func == 'test':
-        testdata()
-    else:
-        raise Exception('wrong args')
-
 if __name__ == '__main__':
-    main()
+    test()
