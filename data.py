@@ -22,9 +22,9 @@ class PreData(object):
     def _read_text(self):
         print('reading text...')
         if Config.corpus_splitting == 1:
-            path_pre = './datas/lin/'
+            path_pre = './data/interim/lin/'
         elif Config.corpus_splitting == 2:
-            path_pre = './datas/ji/'
+            path_pre = './data/interim/ji/'
         with open(path_pre + 'train.pkl', 'rb') as f:
             self.arg1_train_r = pickle.load(f)
             self.arg2_train_r = pickle.load(f)
@@ -65,7 +65,7 @@ class PreData(object):
             if word in pretrained_vocab:
                 we[idx, :] = w2v[word]
         self.we = torch.from_numpy(we)
-        torch.save(self.we, './datas/data/we.pkl')
+        torch.save(self.we, './data/processed/we.pkl')
 
     def _text2i(self, texts):
         l = len(texts)
@@ -111,15 +111,15 @@ class PreData(object):
             self._sense2i(self.sense2_test_r)
         ]
         print('saving data...')
-        torch.save(train_data, './datas/data/train.pkl')
-        torch.save(dev_data, './datas/data/dev.pkl')
-        torch.save(test_data, './datas/data/test.pkl')
+        torch.save(train_data, './data/processed/train.pkl')
+        torch.save(dev_data, './data/processed/dev.pkl')
+        torch.save(test_data, './data/processed/test.pkl')
 
 def testpredata():
-    we = torch.load('./datas/data/we.pkl')
-    train_data = torch.load('./datas/data/train.pkl')
-    dev_data = torch.load('./datas/data/dev.pkl')
-    test_data = torch.load('./datas/data/test.pkl')
+    we = torch.load('./data/processed/we.pkl')
+    train_data = torch.load('./data/processed/train.pkl')
+    dev_data = torch.load('./data/processed/dev.pkl')
+    test_data = torch.load('./data/processed/test.pkl')
     print(we)
     for data in [train_data, dev_data, test_data]:
         for d in data:
@@ -138,13 +138,13 @@ class Data(torchdata.Dataset):
 
 def testdata():
     train_loader = torchdata.DataLoader(
-        Data('./datas/data/train.pkl'), batch_size=128, shuffle=True, drop_last=False
+        Data('./data/processed/train.pkl'), batch_size=128, shuffle=True, drop_last=False
     )
     dev_loader = torchdata.DataLoader(
-        Data('./datas/data/dev.pkl'), batch_size=128, shuffle=True, drop_last=False
+        Data('./data/processed/dev.pkl'), batch_size=128, shuffle=True, drop_last=False
     )
     test_loader = torchdata.DataLoader(
-        Data('./datas/data/test.pkl'), batch_size=128, shuffle=True, drop_last=False
+        Data('./data/processed/test.pkl'), batch_size=128, shuffle=True, drop_last=False
     )
     for loader in [train_loader, dev_loader, test_loader]:
         res = {}

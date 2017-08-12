@@ -52,7 +52,7 @@ def preprocess(splitting):
     sense1_test = []
     sense2_test = []
 
-    for corpus in CorpusReader('pdtb2.csv').iter_data():
+    for corpus in CorpusReader('./raw/pdtb2.csv').iter_data():
         if corpus.Relation != 'Implicit':
             continue
         sense_split = corpus.ConnHeadSemClass1.split('.')
@@ -102,9 +102,9 @@ def preprocess(splitting):
     print('test size:', len(arg1_test))
 
     if splitting == 1:
-        pre = './lin/'
+        pre = './interim/lin/'
     elif splitting == 2:
-        pre = './ji/'
+        pre = './interim/ji/'
     with open(pre + 'train.pkl', 'wb') as f:
         pickle.dump(arg1_train, f)
         pickle.dump(arg2_train, f)
@@ -123,9 +123,9 @@ def preprocess(splitting):
 
 def test(splitting):
     if splitting == 1:
-        pre = './lin/'
+        pre = './interim/lin/'
     elif splitting == 2:
-        pre = './ji/'
+        pre = './interim/ji/'
     with open(pre + 'train.pkl', 'rb') as f:
         arg1_train = pickle.load(f)
         arg2_train = pickle.load(f)
