@@ -24,7 +24,7 @@ class CNNencoder(nn.Module):
         self.embed.weight.data.copy_(we_tensor)
         self.embed.weight.requires_grad = False
         for i in range(Config.conv_filter_set_num):
-            nn.init.normal(self.convs[i].weight, mean=0, std=0.01)
+            nn.init.uniform(self.convs[i].weight, -0.01, 0.01)
             self.convs[i].bias.data.fill_(0)
 
     def forward(self, input):
@@ -60,7 +60,7 @@ class Args_encoder(nn.Module):
     def _init_weight(self):
         for i in range(Config.arg_encoder_fc_num):
             self.fc[i].bias.data.fill_(0)
-            nn.init.normal(self.fc[i].weight, mean=0, std=0.01)
+            nn.init.uniform(self.fc[i].weight, -0.01, 0.01)
 
     def forward(self, arg1, arg2):
         repr = torch.cat((self.arg1enc(arg1), self.arg2enc(arg2)), dim=1)
@@ -87,9 +87,9 @@ class Classifier(nn.Module):
     def _init_weight(self):
         for i in range(Config.clf_fc_num):
             self.fc[i].bias.data.fill_(0)
-            nn.init.normal(self.fc[i].weight, mean=0, std=0.01)
+            nn.init.uniform(self.fc[i].weight, -0.01, 0.01)
         self.lastfc.bias.data.fill_(0)
-        nn.init.normal(self.lastfc.weight, mean=0, std=0.01)
+        nn.init.uniform(self.lastfc.weight, -0.01, 0.01)
 
     def forward(self, input):
         output = input
@@ -116,12 +116,12 @@ class Discriminator(nn.Module):
     def _init_weight(self):
         for i in range(4):
             self.fc[i].bias.data.fill_(0)
-            nn.init.normal(self.fc[i].weight, mean=0, std=0.01)
+            nn.init.uniform(self.fc[i].weight, -0.01, 0.01)
         for i in range(2):
             self.gatefc[i].bias.data.fill_(0)
-            nn.init.normal(self.gatefc[i].weight, mean=0, std=0.01)
+            nn.init.uniform(self.gatefc[i].weight, -0.01, 0.01)
         self.lastfc.bias.data.fill_(0)
-        nn.init.normal(self.lastfc.weight, mean=0, std=0.01)
+        nn.init.uniform(self.lastfc.weight, -0.01, 0.01)
 
     def forward(self, input):
         o1 = self.nonlinear(self.fc[0](self.dropout(input)))
