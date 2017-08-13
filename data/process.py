@@ -13,11 +13,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument('func', type=str)
 
 class PreData(object):
-    def __init__(self):
+    def __init__(self, need_we=True, need_data=True):
         self._read_text()
         self._get_vocab()
-        self._get_we()
-        self._pre_data()
+        if need_we:
+            self._get_we()
+        if need_data:
+            self._pre_data()
         print('predata done.')
 
     def _read_text(self):
@@ -130,6 +132,10 @@ def main():
     A = parser.parse_args()
     if A.func == 'pre':
         d = PreData()
+    elif A.func == 'prewe':
+        d = PreData(need_data=False)
+    elif A.func == 'predata':
+        d = PreData(need_we=False)
     elif A.func == 'test':
         testpredata()
     else:
