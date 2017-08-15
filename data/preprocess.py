@@ -45,10 +45,12 @@ def preprocess(splitting):
     sense_train = []
     arg1_dev = []
     arg2_dev = []
+    conn_dev = []
     sense1_dev = []
     sense2_dev = []
     arg1_test = []
     arg2_test = []
+    conn_test = []
     sense1_test = []
     sense2_test = []
 
@@ -58,8 +60,10 @@ def preprocess(splitting):
         sense_split = corpus.ConnHeadSemClass1.split('.')
         sense_l2 = '.'.join(sense_split[0:2])
         if sense_l2 in selected_sense:
-            arg1 = arg_filter(corpus.arg1_words())
-            arg2 = arg_filter(corpus.arg2_words())
+            # arg1 = arg_filter(corpus.arg1_words())
+            # arg2 = arg_filter(corpus.arg2_words())
+            arg1 = corpus.arg1_words()
+            arg2 = corpus.arg2_words()
             if corpus.Section in train_sec:
                 arg1_train.append(arg1)
                 arg2_train.append(arg2)
@@ -68,10 +72,12 @@ def preprocess(splitting):
             elif corpus.Section in dev_sec:
                 arg1_dev.append(arg1)
                 arg2_dev.append(arg2)
+                conn_dev.append(corpus.Conn1.split())
                 sense1_dev.append([sense_l2, sense_split[0]])
             elif corpus.Section in test_sec:
                 arg1_test.append(arg1)
                 arg2_test.append(arg2)
+                conn_test.append(corpus.Conn1.split())
                 sense1_test.append([sense_l2, sense_split[0]])
             else:
                 continue
@@ -95,8 +101,8 @@ def preprocess(splitting):
                     sense2_test.append([None, None])
     
     assert len(arg1_train) == len(arg2_train) == len(conn_train) == len(sense_train)
-    assert len(arg1_dev) == len(arg2_dev) == len(sense1_dev) == len(sense2_dev)
-    assert len(arg1_test) == len(arg2_test) == len(sense1_test) == len(sense2_test)
+    assert len(arg1_dev) == len(arg2_dev) == len(conn_dev) == len(sense1_dev) == len(sense2_dev)
+    assert len(arg1_test) == len(arg2_test) == len(conn_test) == len(sense1_test) == len(sense2_test)
     print('train size:', len(arg1_train))
     print('dev size:', len(arg1_dev))
     print('test size:', len(arg1_test))
@@ -113,11 +119,13 @@ def preprocess(splitting):
     with open(pre + 'dev.pkl', 'wb') as f:
         pickle.dump(arg1_dev, f)
         pickle.dump(arg2_dev, f)
+        pickle.dump(conn_dev, f)
         pickle.dump(sense1_dev, f)
         pickle.dump(sense2_dev, f)
     with open(pre + 'test.pkl', 'wb') as f:
         pickle.dump(arg1_test, f)
         pickle.dump(arg2_test, f)
+        pickle.dump(conn_test, f)
         pickle.dump(sense1_test, f)
         pickle.dump(sense2_test, f)
 
@@ -134,17 +142,19 @@ def test(splitting):
     with open(pre + 'dev.pkl', 'rb') as f:
         arg1_dev = pickle.load(f)
         arg2_dev = pickle.load(f)
+        conn_dev = pickle.load(f)
         sense1_dev = pickle.load(f)
         sense2_dev = pickle.load(f)
     with open(pre + 'test.pkl', 'rb') as f:
         arg1_test = pickle.load(f)
         arg2_test = pickle.load(f)
+        conn_test = pickle.load(f)
         sense1_test = pickle.load(f)
         sense2_test = pickle.load(f)
 
     assert len(arg1_train) == len(arg2_train) == len(conn_train) == len(sense_train)
-    assert len(arg1_dev) == len(arg2_dev) == len(sense1_dev) == len(sense2_dev)
-    assert len(arg1_test) == len(arg2_test) == len(sense1_test) == len(sense2_test)
+    assert len(arg1_dev) == len(arg2_dev) == len(conn_dev) == len(sense1_dev) == len(sense2_dev)
+    assert len(arg1_test) == len(arg2_test) == len(conn_test) == len(sense1_test) == len(sense2_test)
     print('train size:', len(arg1_train))
     print(arg1_train[0:5])
     print(arg2_train[0:5])
@@ -153,11 +163,13 @@ def test(splitting):
     print('dev size:', len(arg1_dev))
     print(arg1_dev[0:5])
     print(arg2_dev[0:5])
+    print(conn_dev[0:5])
     print(sense1_dev[0:5])
     print(sense2_dev[0:5])
     print('test size:', len(arg1_test))
     print(arg1_test[0:5])
     print(arg2_test[0:5])
+    print(conn_test[0:5])
     print(sense1_test[0:5])
     print(sense2_test[0:5])
 

@@ -36,11 +36,13 @@ class PreData(object):
         with open(path_pre + 'dev.pkl', 'rb') as f:
             self.arg1_dev_r = pickle.load(f)
             self.arg2_dev_r = pickle.load(f)
+            self.conn_dev_r = pickle.load(f)
             self.sense1_dev_r = pickle.load(f)
             self.sense2_dev_r = pickle.load(f)
         with open(path_pre + 'test.pkl', 'rb') as f:
             self.arg1_test_r = pickle.load(f)
             self.arg2_test_r = pickle.load(f)
+            self.conn_test_r = pickle.load(f)
             self.sense1_test_r = pickle.load(f)
             self.sense2_test_r = pickle.load(f)
 
@@ -50,7 +52,8 @@ class PreData(object):
         self.v_size = 2
         for sentlist in [
             self.arg1_train_r, self.arg2_train_r, self.conn_train_r,
-            self.arg1_dev_r, self.arg2_dev_r, self.arg1_test_r, self.arg2_test_r
+            self.arg1_dev_r, self.arg2_dev_r, self.conn_dev_r,
+            self.arg1_test_r, self.arg2_test_r, self.conn_test_r
         ]:
             for sent in sentlist:
                 for word in sent:
@@ -104,12 +107,14 @@ class PreData(object):
         dev_data = [
             self._text2i(self.arg1_dev_r),
             self._text2i(self.arg2_dev_r),
+            self._text2i([i+j for (i, j) in zip(self.conn_dev_r, self.arg2_dev_r)]),
             self._sense2i(self.sense1_dev_r),
             self._sense2i(self.sense2_dev_r)
         ]
         test_data = [
             self._text2i(self.arg1_test_r),
             self._text2i(self.arg2_test_r),
+            self._text2i([i+j for (i, j) in zip(self.conn_test_r, self.arg2_test_r)]),
             self._sense2i(self.sense1_test_r),
             self._sense2i(self.sense2_test_r)
         ]
