@@ -1,4 +1,5 @@
 import torch
+from datetime import datetime
 
 class Config(object):
     i2sense = [
@@ -24,18 +25,19 @@ class Config(object):
 
     nonlinear = torch.nn.Tanh()
 
+    embed_dropout = 0.1
     sent_repr_dim = 256
     conv_filter_set_num = 3
     conv_kernel_size = [2, 4, 8]
 
     arg_rep_dim = sent_repr_dim * conv_filter_set_num * 2
-    arg_encoder_fc_num = 1
+    arg_encoder_fc_num = 0
     arg_encoder_fc_dim = 512
     arg_encoder_dropout = 0.4
     
     pair_rep_dim = arg_encoder_fc_dim if arg_encoder_fc_num > 0 else arg_rep_dim
 
-    clf_fc_num = 1
+    clf_fc_num = 0
     clf_fc_dim = 512
     clf_class_num = 11
     clf_dropout = 0.4
@@ -43,4 +45,12 @@ class Config(object):
     discr_fc_dim = 1024
     discr_dropout = 0.1
 
+    seed = 666
+    batch_size = 128
+    shuffle = True
+    lambda1 = 0.1
+    lr = 0.001
+    l2_penalty = 0
+    grad_clip = 1
 
+    logdir = './res/' + datetime.now().strftime('%B%d-%H:%M:%S')

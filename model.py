@@ -11,7 +11,8 @@ class CNNencoder(nn.Module):
         super(CNNencoder, self).__init__()
         self.need_kmaxavg = need_kmaxavg
         self.embed = nn.Embedding(we_tensor.size(0), we_tensor.size(1))
-        self.convs = []
+        self.dropout = nn.Dropout(Config.embed_dropout)
+        self.convs = nn.ModuleList()
         for i in range(Config.conv_filter_set_num):
             self.convs.append(nn.Conv1d(
                 we_tensor.size(1), Config.sent_repr_dim, Config.conv_kernel_size[i],
@@ -24,32 +25,31 @@ class CNNencoder(nn.Module):
         self.embed.weight.data.copy_(we_tensor)
         self.embed.weight.requires_grad = False
         for i in range(Config.conv_filter_set_num):
-            nn.init.uniform(self.convs[i].weight, -0.01, 0.01)
+            nn.init.uniform(self.convs[i].weight, -0.04, 0.04)
             self.convs[i].bias.data.fill_(0)
 
     def forward(self, input):
-        embedding = self.embed(input).transpose(1, 2)
+        embedding = self.dropout(self.embed(input).transpose(1, 2))
         conv_out = []
         for i in range(Config.conv_filter_set_num):
             tmp = self.nonlinear(self.convs[i](embedding))
             if tmp.size(2) > embedding.size(2):
                 tmp = tmp[:, :, 1:]             # for 'same' padding
-                if self.need_kmaxavg:
-                    tmp = torch.topk(tmp, k=2, sorted=False)[0]
-                    tmp = torch.mean(tmp, dim=2, keepdim=True)
-                else:
-                    tmp = torch.topk(tmp, k=1)[0]
+            if self.need_kmaxavg:
+                tmp = torch.topk(tmp, k=2, sorted=False)[0]
+                tmp = torch.mean(tmp, dim=2, keepdim=True)
+            else:
+                tmp = torch.topk(tmp, k=1)[0]
             conv_out.append(torch.squeeze(tmp, dim=2))
-            output = torch.cat(conv_out, dim=1)
+        output = torch.cat(conv_out, dim=1)
         return output
 
 class Args_encoder(nn.Module):
     def __init__(self, we_tensor, need_kmaxavg=False):
         super(Args_encoder, self).__init__()
-        self.arg1enc = CNNencoder(we_tensor)
-        self.arg2enc = CNNencoder(we_tensor, need_kmaxavg)
+        self.argenc = CNNencoder(we_tensor, need_kmaxavg)
         self.dropout = nn.Dropout(Config.arg_encoder_dropout)
-        self.fc = []
+        self.fc = nn.ModuleList()
         if Config.arg_encoder_fc_num > 0:
             self.fc.append(nn.Linear(Config.arg_rep_dim, Config.arg_encoder_fc_dim))
             for i in range(Config.arg_encoder_fc_num - 1):
@@ -63,16 +63,16 @@ class Args_encoder(nn.Module):
             nn.init.uniform(self.fc[i].weight, -0.01, 0.01)
 
     def forward(self, arg1, arg2):
-        repr = torch.cat((self.arg1enc(arg1), self.arg2enc(arg2)), dim=1)
+        repr = torch.cat((self.argenc(arg1), self.argenc(arg2)), dim=1)
         for i in range(Config.arg_encoder_fc_num):
-            repr = self.nonlinear(self.fc[i](self.dropout(repr)))
+            repr = self.dropout(self.nonlinear(self.fc[i](repr)))
         return repr
 
 class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
         self.dropout = nn.Dropout(Config.clf_dropout)
-        self.fc = []
+        self.fc = nn.ModuleList()
         if Config.clf_fc_num > 0:
             self.fc.append(nn.Linear(Config.pair_rep_dim, Config.clf_fc_dim))
             for i in range(Config.clf_fc_num - 1):
@@ -89,24 +89,24 @@ class Classifier(nn.Module):
             self.fc[i].bias.data.fill_(0)
             nn.init.uniform(self.fc[i].weight, -0.01, 0.01)
         self.lastfc.bias.data.fill_(0)
-        nn.init.uniform(self.lastfc.weight, -0.01, 0.01)
+        nn.init.uniform(self.lastfc.weight, -0.02, 0.02)
 
     def forward(self, input):
         output = input
         for i in range(Config.clf_fc_num):
-            output = self.nonlinear(self.fc[i](self.dropout(output)))
-        output = self.lastfc(self.dropout(output))
+            output = self.dropout(self.nonlinear(self.fc[i](output)))
+        output = self.dropout(self.lastfc(output))
         return output
 
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
         self.dropout = nn.Dropout(Config.discr_dropout)
-        self.fc = []
+        self.fc = nn.ModuleList()
         self.fc.append(nn.Linear(Config.pair_rep_dim, Config.discr_fc_dim))
         for i in range(3):
             self.fc.append(nn.Linear(Config.discr_fc_dim, Config.discr_fc_dim))
-        self.gatefc = []
+        self.gatefc = nn.ModuleList()
         for i in range(2):
             self.gatefc.append(nn.Linear(Config.discr_fc_dim, Config.discr_fc_dim))
         self.lastfc = nn.Linear(Config.discr_fc_dim, 2)
@@ -135,7 +135,7 @@ class Discriminator(nn.Module):
 
 
 def testCNN(need_kmaxavg=False, need_print=False):
-    we = torch.load('./datas/data/we.pkl')
+    we = torch.load('./data/processed/we.pkl')
     model = CNNencoder(we, need_kmaxavg)
     model.eval()
     input = np.random.randint(0, we.size(0), (5, 80))
@@ -149,7 +149,7 @@ def testCNN(need_kmaxavg=False, need_print=False):
         return out
 
 def testArgenc(need_kmaxavg=False, need_print=False):
-    we = torch.load('./datas/data/we.pkl')
+    we = torch.load('./data/processed/we.pkl')
     model = Args_encoder(we, need_kmaxavg)
     model.eval()
     arg1 = np.random.randint(0, we.size(0), (5, 80))
@@ -179,7 +179,7 @@ def testDiscr():
     print(out)
 
 def test():
-    testDiscr()
+    testCNN(need_print=True)
 
 if __name__ == '__main__':
     test()
