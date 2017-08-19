@@ -12,7 +12,6 @@ class ModelBuilder(object):
         self.cuda = use_cuda
         self._pre_data()
         self._build_model()
-        self.logwriter = SummaryWriter(Config.logdir)
     
     def _pre_data(self):
         print('pre data...')
@@ -30,7 +29,8 @@ class ModelBuilder(object):
             self.a_encoder.cuda()
             self.classifier.cuda()
             self.discriminator.cuda()
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion_c = torch.nn.CrossEntropyLoss()
+        self.criterion_d = torch.nn.BCELoss()
         para_filter = lambda model: filter(lambda p: p.requires_grad, model.parameters())
         self.i_optimizer = torch.optim.Adagrad(para_filter(self.i_encoder), Config.lr, weight_decay=Config.l2_penalty)
         self.a_optimizer = torch.optim.Adagrad(para_filter(self.a_encoder), Config.lr, weight_decay=Config.l2_penalty)
@@ -74,7 +74,7 @@ class ModelBuilder(object):
             tmp = (output_sense == sense).long()
             correct_n += torch.sum(tmp).data
             
-            loss = self.criterion(output, sense)
+            loss = self.criterion_c(output, sense)
             self.i_optimizer.zero_grad()
             self.c_optimizer.zero_grad()
             loss.backward()
@@ -102,7 +102,7 @@ class ModelBuilder(object):
             tmp = (output_sense == sense).long()
             correct_n += torch.sum(tmp).data
 
-            loss = self.criterion(output, sense)
+            loss = self.criterion_c(output, sense)
             self.a_optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm(self.a_encoder.parameters(), Config.grad_clip)
@@ -111,38 +111,241 @@ class ModelBuilder(object):
             total_loss += loss.data * sense.size(0)
         return total_loss[0] / self.data.train_size, correct_n[0] / self.data.train_size
 
-    def _adtrain_one(self):
-        pass
+    def _pretrain_i_a_one(self):
+        self.i_encoder.train()
+        self.a_encoder.train()
+        total_loss = 0
+        correct_n = 0
+        total_loss_a = 0
+        correct_n_a = 0
+        for a1, a2i, a2a, sense in self.data.train_loader:
+            if self.cuda:
+                a1, a2i, a2a, sense = a1.cuda(), a2i.cuda(), a2a.cuda(), sense.cuda()
+            a1, a2i, a2a, sense = Variable(a1), Variable(a2i), Variable(a2a), Variable(sense)
 
-    def _pretrain(self):
-        for epoch in range(1,301):
+            # train i
+            self.classifier.train()
+            output = self.classifier(self.i_encoder(a1, a2i))
+            _, output_sense = torch.max(output, 1)
+            assert output_sense.size() == sense.size()
+            tmp = (output_sense == sense).long()
+            correct_n += torch.sum(tmp).data
+            
+            loss = self.criterion_c(output, sense)
+            self.i_optimizer.zero_grad()
+            self.c_optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm(self.i_encoder.parameters(), Config.grad_clip)
+            torch.nn.utils.clip_grad_norm(self.classifier.parameters(), Config.grad_clip)
+            self.i_optimizer.step()
+            self.c_optimizer.step()
+            
+            total_loss += loss.data * sense.size(0)
+
+            #train a
+            self.classifier.eval()
+            output = self.classifier(self.a_encoder(a1, a2a))
+            _, output_sense = torch.max(output, 1)
+            assert output_sense.size() == sense.size()
+            tmp = (output_sense == sense).long()
+            correct_n_a += torch.sum(tmp).data
+
+            loss = self.criterion_c(output, sense)
+            self.a_optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm(self.a_encoder.parameters(), Config.grad_clip)
+            self.a_optimizer.step()
+
+            total_loss_a += loss.data * sense.size(0)
+        return total_loss[0] / self.data.train_size, correct_n[0] / self.data.train_size, total_loss_a[0] / self.data.train_size, correct_n_a[0] / self.data.train_size
+
+    def _adtrain_one(self):
+        total_loss = 0
+        correct_n = 0
+        for a1, a2i, a2a, sense in self.data.train_loader:
+            if self.cuda:
+                a1, a2i, a2a, sense = a1.cuda(), a2i.cuda(), a2a.cuda(), sense.cuda()
+            a1, a2i, a2a, sense = Variable(a1), Variable(a2i), Variable(a2a), Variable(sense)
+
+            # phase 1, train discriminator
+            self.a_encoder.eval()
+            self.i_encoder.eval()
+            self.discriminator.train()
+            self.d_optimizer.zero_grad()
+            output_i = self.discriminator(self.i_encoder(a1, a2i))
+            zero_tensor = torch.zeros(output_i.size())
+            if self.cuda:
+                zero_tensor = zero_tensor.cuda()
+            zero_tensor = Variable(zero_tensor)
+            d_loss_i = self.criterion_d(output_i, zero_tensor)
+            d_loss_i.backward()
+            output_a = self.discriminator(self.a_encoder(a1, a2a))
+            one_tensor = torch.ones(output_a.size())
+            if self.cuda:
+                one_tensor = one_tensor.cuda()
+            one_tensor = Variable(one_tensor)
+            d_loss_a = self.criterion_d(output_a, one_tensor)
+            d_loss_a.backward()
+            torch.nn.utils.clip_grad_norm(self.discriminator.parameters(), Config.grad_clip)
+            self.d_optimizer.step()
+        
+            # phase 2, train i/c
+            self.i_encoder.train()
+            self.classifier.train()
+            self.discriminator.eval()
+            self.i_optimizer.zero_grad()
+            self.c_optimizer.zero_grad()
+            sent_repr = self.i_encoder(a1, a2i)
+
+            output = self.classifier(sent_repr)
+            _, output_sense = torch.max(output, 1)
+            assert output_sense.size() == sense.size()
+            tmp = (output_sense == sense).long()
+            correct_n += torch.sum(tmp).data
+            loss_1 = self.criterion_c(output, sense)
+
+            output_d = self.discriminator(sent_repr)
+            one_tensor = torch.ones(output_d.size())
+            if self.cuda:
+                one_tensor = one_tensor.cuda()
+            one_tensor = Variable(one_tensor)
+            loss_2 = self.criterion_d(output_d, one_tensor)
+
+            loss = loss_1 + loss_2 * Config.lambda1
+            loss.backward()
+            torch.nn.utils.clip_grad_norm(self.i_encoder.parameters(), Config.grad_clip)
+            torch.nn.utils.clip_grad_norm(self.classifier.parameters(), Config.grad_clip)
+            self.i_optimizer.step()
+            self.c_optimizer.step()
+            
+            total_loss += loss.data * sense.size(0)
+        return total_loss[0] / self.data.train_size, correct_n[0] / self.data.train_size
+
+    def _pretrain_i(self):
+        best_dev_acc = 0
+        for epoch in range(Config.pre_i_epochs):
             start_time = time.time()
             loss, acc = self._pretrain_i_one()
             self._print_train(epoch, time.time()-start_time, loss, acc)
-            self.logwriter.add_scalar('loss/train_loss', loss, epoch)
-            self.logwriter.add_scalar('acc/train_acc', acc*100, epoch)
+            self.logwriter.add_scalar('loss/train_loss_i', loss, epoch)
+            self.logwriter.add_scalar('acc/train_acc_i', acc*100, epoch)
 
             dev_loss, dev_acc = self._eval('dev', 'i')
             self._print_eval('dev', dev_loss, dev_acc)
-            self.logwriter.add_scalar('loss/dev_loss', dev_loss, epoch)
-            self.logwriter.add_scalar('acc/dev_acc', dev_acc*100, epoch)
+            self.logwriter.add_scalar('loss/dev_loss_i', dev_loss, epoch)
+            self.logwriter.add_scalar('acc/dev_acc_i', dev_acc*100, epoch)
+            if dev_acc >= best_dev_acc:
+                best_dev_acc = dev_acc
+                self._save_model(self.i_encoder, 'pre_i.pkl')
+                self._save_model(self.classifier, 'pre_c.pkl')
+                print('pre_i saved at epoch {}'.format(epoch))
 
             test_loss, test_acc = self._eval('test', 'i')
             self._print_eval('test', test_loss, test_acc)
-            self.logwriter.add_scalar('loss/test_loss', test_loss, epoch)
-            self.logwriter.add_scalar('acc/test_acc', test_acc*100, epoch)
+            self.logwriter.add_scalar('loss/test_loss_i', test_loss, epoch)
+            self.logwriter.add_scalar('acc/test_acc_i', test_acc*100, epoch)
+
+    def _pretrain_a(self):
+        best_dev_acc = 0
+        for epoch in range(Config.pre_a_epochs):
+            start_time = time.time()
+            loss, acc = self._pretrain_a_one()
+            self._print_train(epoch, time.time()-start_time, loss, acc)
+            self.logwriter.add_scalar('loss/train_loss_a', loss, epoch)
+            self.logwriter.add_scalar('acc/train_acc_a', acc*100, epoch)
+
+            dev_loss, dev_acc = self._eval('dev', 'a')
+            self._print_eval('dev', dev_loss, dev_acc)
+            self.logwriter.add_scalar('loss/dev_loss_a', dev_loss, epoch)
+            self.logwriter.add_scalar('acc/dev_acc_a', dev_acc*100, epoch)
+            if dev_acc >= best_dev_acc:
+                best_dev_acc = dev_acc
+                self._save_model(self.a_encoder, 'pre_a.pkl')
+                print('pre_a saved at epoch {}'.format(epoch))
             
-        print('training done')
-
     def _adtrain(self):
-        pass
+        best_dev_acc = 0
+        for epoch in range(Config.final_trian_epochs):
+            start_time = time.time()
+            loss, acc = self._adtrain_one()
+            self._print_train(epoch, time.time()-start_time, loss, acc)
+            self.logwriter.add_scalar('loss/train_loss_f', loss, epoch)
+            self.logwriter.add_scalar('acc/train_acc_f', acc*100, epoch)
 
-    def train(self):
+            dev_loss, dev_acc = self._eval('dev', 'i')
+            self._print_eval('dev', dev_loss, dev_acc)
+            self.logwriter.add_scalar('loss/dev_loss_f', dev_loss, epoch)
+            self.logwriter.add_scalar('acc/dev_acc_f', dev_acc*100, epoch)
+            if dev_acc >= best_dev_acc:
+                best_dev_acc = dev_acc
+                self._save_model(self.i_encoder, 'final_i.pkl')
+                self._save_model(self.classifier, 'final_c.pkl')
+                self._save_model(self.discriminator, 'final_d.pkl')
+                print('final_i saved at epoch {}'.format(epoch))
+
+            test_loss, test_acc = self._eval('test', 'i')
+            self._print_eval('test', test_loss, test_acc)
+            self.logwriter.add_scalar('loss/test_loss_f', test_loss, epoch)
+            self.logwriter.add_scalar('acc/test_acc_f', test_acc*100, epoch)
+
+    def _train_together(self):
+        best_dev_acc = 0
+        loss = acc = loss_a = acc_a = 0
+        for epoch in range(Config.together_epochs):
+            start_time = time.time()
+            if epoch < Config.first_stage_epochs:
+                loss, acc, loss_a, acc_a = self._pretrain_i_a_one()
+            else:
+                loss, acc = self._adtrain_one()
+            self.logwriter.add_scalar('loss/train_loss_t', loss, epoch)
+            self.logwriter.add_scalar('acc/train_acc_t', acc*100, epoch)
+            self.logwriter.add_scalar('loss/train_loss_t_a', loss_a, epoch)
+            self.logwriter.add_scalar('acc/train_acc_t_a', acc_a*100, epoch)
+
+            dev_loss, dev_acc = self._eval('dev', 'i')
+            dev_loss_a, dev_acc_a = self._eval('dev', 'a')
+            self.logwriter.add_scalar('loss/dev_loss_t', dev_loss, epoch)
+            self.logwriter.add_scalar('acc/dev_acc_t', dev_acc*100, epoch)
+            self.logwriter.add_scalar('loss/dev_loss_t_a', dev_loss_a, epoch)
+            self.logwriter.add_scalar('acc/dev_acc_t_a', dev_acc_a*100, epoch)
+            if dev_acc >= best_dev_acc:
+                best_dev_acc = dev_acc
+                self._save_model(self.i_encoder, 't_i.pkl')
+                self._save_model(self.classifier, 't_c.pkl')
+                print('t_i t_c saved at epoch {}'.format(epoch))
+
+            test_loss, test_acc = self._eval('test', 'i')
+            test_loss_a, test_acc_a = self._eval('test', 'a')
+            self.logwriter.add_scalar('loss/test_loss_t', test_loss, epoch)
+            self.logwriter.add_scalar('acc/test_acc_t', test_acc*100, epoch)
+            self.logwriter.add_scalar('loss/test_loss_t_a', test_loss_a, epoch)
+            self.logwriter.add_scalar('acc/test_acc_t_a', test_acc_a*100, epoch)
+
+    def train(self, need_pre_i, need_pre_a, need_final, together):
         print('start training')
-        self._pretrain()
+        self.logwriter = SummaryWriter(Config.logdir)
+        if need_pre_i:
+            self._pretrain_i()
+        if need_pre_a:
+            if not need_pre_i:
+                self._load_model(self.i_encoder, 'pre_i.pkl')
+                self._load_model(self.classifier, 'pre_c.pkl')
+            self._pretrain_a()
+        if need_final:
+            if not need_pre_a:
+                if need_pre_i:
+                    raise Exception('i/a not match')
+                self._load_model(self.i_encoder, 'pre_i.pkl')
+                self._load_model(self.a_encoder, 'pre_a.pkl')
+                self._load_model(self.classifier, 'pre_c.pkl')
+            self._adtrain()
+        if together:
+            self._train_together()
+        print('training done')
 
     def _eval(self, task, i_or_a):
         self.i_encoder.eval()
+        self.a_encoder.eval()
         self.classifier.eval()
         total_loss = 0
         correct_n = 0
@@ -177,9 +380,23 @@ class ModelBuilder(object):
             tmp = (output_sense == gold_sense).long()
             correct_n += torch.sum(tmp).data
 
-            loss = self.criterion(output, gold_sense)
+            loss = self.criterion_c(output, gold_sense)
             total_loss += loss.data * gold_sense.size(0)
         return total_loss[0] / n, correct_n[0] / n
 
-    def eval(self):
-        pass
+    def eval(self, stage):
+        if stage == 'i':
+            self._load_model(self.i_encoder, 'pre_i.pkl')
+            self._load_model(self.classifier, 'pre_c.pkl')
+            test_loss, test_acc = self._eval('test', 'i')
+            self._print_eval('test', test_loss, test_acc)
+        if stage == 'f':
+            self._load_model(self.i_encoder, 'final_i.pkl')
+            self._load_model(self.classifier, 'final_c.pkl')
+            test_loss, test_acc = self._eval('test', 'i')
+            self._print_eval('test', test_loss, test_acc)
+        if stage == 't':
+            self._load_model(self.i_encoder, 't_i.pkl')
+            self._load_model(self.classifier, 't_c.pkl')
+            test_loss, test_acc = self._eval('test', 'i')
+            self._print_eval('test', test_loss, test_acc)

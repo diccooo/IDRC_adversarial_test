@@ -17,7 +17,7 @@ class Config(object):
     i2senseclass = ['Temporal', 'Contingency', 'Comparison', 'Expansion']
     senseclass2i = {'Temporal':0, 'Contingency':1, 'Comparison':2, 'Expansion':3}
 
-    corpus_splitting = 1            # 1 for Lin and 2 for Ji
+    corpus_splitting = 2            # 1 for Lin and 2 for Ji
     max_sent_len = 80
 
     wordvec_path = '~/Projects/GoogleNews-vectors-negative300.bin.gz'
@@ -48,9 +48,15 @@ class Config(object):
     seed = 666
     batch_size = 128
     shuffle = True
-    lambda1 = 0.1
+    lambda1 = 0.01
     lr = 0.001
     l2_penalty = 0
     grad_clip = 1
+
+    pre_i_epochs = 250
+    pre_a_epochs = 300
+    final_trian_epochs = 500
+    first_stage_epochs = 30
+    together_epochs = 500
 
     logdir = './res/' + datetime.now().strftime('%B%d-%H:%M:%S')

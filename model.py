@@ -25,7 +25,7 @@ class CNNencoder(nn.Module):
         self.embed.weight.data.copy_(we_tensor)
         self.embed.weight.requires_grad = False
         for i in range(Config.conv_filter_set_num):
-            nn.init.uniform(self.convs[i].weight, -0.04, 0.04)
+            nn.init.uniform(self.convs[i].weight, -0.02, 0.02)
             self.convs[i].bias.data.fill_(0)
 
     def forward(self, input):
@@ -104,12 +104,12 @@ class Discriminator(nn.Module):
         self.dropout = nn.Dropout(Config.discr_dropout)
         self.fc = nn.ModuleList()
         self.fc.append(nn.Linear(Config.pair_rep_dim, Config.discr_fc_dim))
-        for i in range(3):
+        for i in range(2):
             self.fc.append(nn.Linear(Config.discr_fc_dim, Config.discr_fc_dim))
         self.gatefc = nn.ModuleList()
         for i in range(2):
             self.gatefc.append(nn.Linear(Config.discr_fc_dim, Config.discr_fc_dim))
-        self.lastfc = nn.Linear(Config.discr_fc_dim, 2)
+        self.fc.append(nn.Linear(Config.discr_fc_dim, 1))
         self.nonlinear = Config.nonlinear
         self._init_weight()
 
@@ -120,8 +120,6 @@ class Discriminator(nn.Module):
         for i in range(2):
             self.gatefc[i].bias.data.fill_(0)
             nn.init.uniform(self.gatefc[i].weight, -0.01, 0.01)
-        self.lastfc.bias.data.fill_(0)
-        nn.init.uniform(self.lastfc.weight, -0.01, 0.01)
 
     def forward(self, input):
         o1 = self.nonlinear(self.fc[0](self.dropout(input)))
@@ -129,8 +127,7 @@ class Discriminator(nn.Module):
         g0 = F.sigmoid(self.gatefc[0](self.dropout(o1)))
         g1 = F.sigmoid(self.gatefc[1](self.dropout(o1)))
         o3 = self.nonlinear(self.fc[2](self.dropout(torch.mul(o2, g1))))
-        o4 = self.nonlinear(self.fc[3](self.dropout(torch.mul(o3, g0))))
-        output = self.lastfc(self.dropout(o4))
+        output = F.sigmoid(self.fc[3](self.dropout(torch.mul(o3, g0))))
         return output
 
 
@@ -179,7 +176,7 @@ def testDiscr():
     print(out)
 
 def test():
-    testCNN(need_print=True)
+    testDiscr()
 
 if __name__ == '__main__':
     test()
