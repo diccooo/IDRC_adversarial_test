@@ -4,7 +4,7 @@ from torch.autograd import Variable
 from tensorboard import SummaryWriter
 
 from data import Data
-from model import Args_encoder, Classifier, Discriminator
+from model import CNN_Args_encoder, Classifier, Discriminator
 from config import Config
 
 class ModelBuilder(object):
@@ -20,8 +20,8 @@ class ModelBuilder(object):
     def _build_model(self):
         print('building model...')
         we = torch.load('./data/processed/we.pkl')
-        self.i_encoder = Args_encoder(we)
-        self.a_encoder = Args_encoder(we, need_kmaxavg=True)
+        self.i_encoder = CNN_Args_encoder(we)
+        self.a_encoder = CNN_Args_encoder(we, need_kmaxavg=True)
         self.classifier = Classifier()
         self.discriminator = Discriminator()
         if self.cuda:

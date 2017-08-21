@@ -44,7 +44,7 @@ class CNNencoder(nn.Module):
         output = torch.cat(conv_out, dim=1)
         return output
 
-class Args_encoder(nn.Module):
+class CNN_Args_encoder(nn.Module):
     def __init__(self, we_tensor, need_kmaxavg=False):
         super(Args_encoder, self).__init__()
         self.argenc = CNNencoder(we_tensor, need_kmaxavg)

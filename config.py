@@ -34,7 +34,7 @@ class Config(object):
     arg_encoder_fc_num = 0
     arg_encoder_fc_dim = 512
     arg_encoder_dropout = 0.4
-    
+
     pair_rep_dim = arg_encoder_fc_dim if arg_encoder_fc_num > 0 else arg_rep_dim
 
     clf_fc_num = 0
