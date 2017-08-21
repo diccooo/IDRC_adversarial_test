@@ -46,7 +46,7 @@ class CNNencoder(nn.Module):
 
 class CNN_Args_encoder(nn.Module):
     def __init__(self, we_tensor, need_kmaxavg=False):
-        super(Args_encoder, self).__init__()
+        super(CNN_Args_encoder, self).__init__()
         self.argenc = CNNencoder(we_tensor, need_kmaxavg)
         self.dropout = nn.Dropout(Config.arg_encoder_dropout)
         self.fc = nn.ModuleList()
