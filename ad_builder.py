@@ -86,31 +86,6 @@ class ModelBuilder(object):
             total_loss += loss.data * sense.size(0)
         return total_loss[0] / self.data.train_size, correct_n[0] / self.data.train_size
 
-    def _pretrain_a_one(self):
-        self.a_encoder.train()
-        self.classifier.eval()
-        total_loss = 0
-        correct_n = 0
-        for a1, a2i, a2a, sense in self.data.train_loader:
-            if self.cuda:
-                a1, a2i, a2a, sense = a1.cuda(), a2i.cuda(), a2a.cuda(), sense.cuda()
-            a1, a2i, a2a, sense = Variable(a1), Variable(a2i), Variable(a2a), Variable(sense)
-            
-            output = self.classifier(self.a_encoder(a1, a2a))
-            _, output_sense = torch.max(output, 1)
-            assert output_sense.size() == sense.size()
-            tmp = (output_sense == sense).long()
-            correct_n += torch.sum(tmp).data
-
-            loss = self.criterion_c(output, sense)
-            self.a_optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm(self.a_encoder.parameters(), Config.grad_clip)
-            self.a_optimizer.step()
-
-            total_loss += loss.data * sense.size(0)
-        return total_loss[0] / self.data.train_size, correct_n[0] / self.data.train_size
-
     def _pretrain_i_a_one(self):
         self.i_encoder.train()
         self.a_encoder.train()
@@ -244,49 +219,6 @@ class ModelBuilder(object):
             self._print_eval('test', test_loss, test_acc)
             self.logwriter.add_scalar('loss/test_loss_i', test_loss, epoch)
             self.logwriter.add_scalar('acc/test_acc_i', test_acc*100, epoch)
-
-    def _pretrain_a(self):
-        best_dev_acc = 0
-        for epoch in range(Config.pre_a_epochs):
-            start_time = time.time()
-            loss, acc = self._pretrain_a_one()
-            self._print_train(epoch, time.time()-start_time, loss, acc)
-            self.logwriter.add_scalar('loss/train_loss_a', loss, epoch)
-            self.logwriter.add_scalar('acc/train_acc_a', acc*100, epoch)
-
-            dev_loss, dev_acc = self._eval('dev', 'a')
-            self._print_eval('dev', dev_loss, dev_acc)
-            self.logwriter.add_scalar('loss/dev_loss_a', dev_loss, epoch)
-            self.logwriter.add_scalar('acc/dev_acc_a', dev_acc*100, epoch)
-            if dev_acc >= best_dev_acc:
-                best_dev_acc = dev_acc
-                self._save_model(self.a_encoder, 'pre_a.pkl')
-                print('pre_a saved at epoch {}'.format(epoch))
-            
-    def _adtrain(self):
-        best_dev_acc = 0
-        for epoch in range(Config.final_trian_epochs):
-            start_time = time.time()
-            loss, acc = self._adtrain_one()
-            self._print_train(epoch, time.time()-start_time, loss, acc)
-            self.logwriter.add_scalar('loss/train_loss_f', loss, epoch)
-            self.logwriter.add_scalar('acc/train_acc_f', acc*100, epoch)
-
-            dev_loss, dev_acc = self._eval('dev', 'i')
-            self._print_eval('dev', dev_loss, dev_acc)
-            self.logwriter.add_scalar('loss/dev_loss_f', dev_loss, epoch)
-            self.logwriter.add_scalar('acc/dev_acc_f', dev_acc*100, epoch)
-            if dev_acc >= best_dev_acc:
-                best_dev_acc = dev_acc
-                self._save_model(self.i_encoder, 'final_i.pkl')
-                self._save_model(self.classifier, 'final_c.pkl')
-                self._save_model(self.discriminator, 'final_d.pkl')
-                print('final_i saved at epoch {}'.format(epoch))
-
-            test_loss, test_acc = self._eval('test', 'i')
-            self._print_eval('test', test_loss, test_acc)
-            self.logwriter.add_scalar('loss/test_loss_f', test_loss, epoch)
-            self.logwriter.add_scalar('acc/test_acc_f', test_acc*100, epoch)
 
     def _train_together(self):
         best_dev_acc = 0
