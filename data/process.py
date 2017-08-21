@@ -48,7 +48,7 @@ class PreData(object):
 
     def _get_vocab(self):
         print('geting vocab...')
-        self.word2i = {'<unk>':0, '</s>':1}
+        self.word2i = {'<pad>':0, '</s>':1}
         self.v_size = 2
         for sentlist in [
             self.arg1_train_r, self.arg2_train_r, self.conn_train_r,
@@ -67,11 +67,14 @@ class PreData(object):
         pretrained_vocab = w2v.vocab.keys()
         print('making we...')
         we = np.zeros((self.v_size, Config.wordvec_dim))
+        n = 0
         for word, idx in self.word2i.items():
             if word in pretrained_vocab:
                 we[idx, :] = w2v[word]
+                n += 1
         self.we = torch.from_numpy(we)
         torch.save(self.we, './processed/we.pkl')
+        print('{}/{} words found'.format(n, self.v_size))
 
     def _text2i(self, texts):
         l = len(texts)
