@@ -147,11 +147,11 @@ def testCNN(need_kmaxavg=False, need_print=False):
 
 def testArgenc(need_kmaxavg=False, need_print=False):
     we = torch.load('./data/processed/we.pkl')
-    model = Args_encoder(we, need_kmaxavg)
+    model = CNN_Args_encoder(we, need_kmaxavg)
     model.eval()
-    arg1 = np.random.randint(0, we.size(0), (5, 80))
+    arg1 = np.random.randint(0, we.size(0), (20, 80))
     arg1 = Variable(torch.from_numpy(arg1))
-    arg2 = np.random.randint(0, we.size(0), (5, 80))
+    arg2 = np.random.randint(0, we.size(0), (20, 80))
     arg2 = Variable(torch.from_numpy(arg2))
     out = model(arg1, arg2)
     if need_print:
