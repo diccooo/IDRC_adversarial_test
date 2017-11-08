@@ -93,7 +93,7 @@ class PreData(object):
             if senses[i][0] is None:
                 tensor[i] = -1
             else:
-                tensor[i] = Config.sense2i[senses[i][0]]
+                tensor[i] = Config.sense2i[senses[i][Config.sense_idx]]
         return tensor
 
     def _pre_data(self):
@@ -106,7 +106,7 @@ class PreData(object):
             self._sense2i(self.sense_train_r)
         ]
         print('pre dev/test data...')
-        # a1, a2, sense1, sense2
+        # a1, a2_i, a2_a, sense1, sense2
         dev_data = [
             self._text2i(self.arg1_dev_r),
             self._text2i(self.arg2_dev_r),

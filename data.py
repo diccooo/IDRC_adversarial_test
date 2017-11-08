@@ -25,7 +25,6 @@ class Data(object):
     def __init__(self, use_cuda):
         kwargs = {'batch_size':Config.batch_size, 'shuffle':Config.shuffle, 'drop_last':False}
         if use_cuda:
-            kwargs['num_workers'] = 1
             kwargs['pin_memory'] = True
         train_data = Dataset('./data/processed/train.pkl', 'train')
         dev_data = Dataset('./data/processed/dev.pkl', 'dev')
