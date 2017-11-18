@@ -18,9 +18,9 @@ def main():
     model = ModelBuilder(havecuda)
     if A.func == 'train':
         if A.stage == 'i':
-            model.train(True, False, False, False)
+            model.train('i')
         elif A.stage == 't':
-            model.train(False, False, False, True)
+            model.train('t')
         else:
             raise Exception('wrone stage')
     elif A.func == 'test':

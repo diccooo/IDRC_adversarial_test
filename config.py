@@ -2,13 +2,13 @@ import torch
 from datetime import datetime
 
 class Config(object):
-    i2sense = [
+    i2sensesecond = [
         'Temporal.Asynchronous', 'Temporal.Synchrony', 'Contingency.Cause',
         'Contingency.Pragmatic cause', 'Comparison.Contrast', 'Comparison.Concession',
         'Expansion.Conjunction', 'Expansion.Instantiation', 'Expansion.Restatement',
         'Expansion.Alternative','Expansion.List'
     ]
-    sense2i = {
+    sense2isecond = {
         'Temporal.Asynchronous':0, 'Temporal.Synchrony':1, 'Contingency.Cause':2,
         'Contingency.Pragmatic cause':3, 'Comparison.Contrast':4, 'Comparison.Concession':5,
         'Expansion.Conjunction':6, 'Expansion.Instantiation':7, 'Expansion.Restatement':8,
@@ -16,6 +16,16 @@ class Config(object):
     }
     i2senseclass = ['Temporal', 'Contingency', 'Comparison', 'Expansion']
     senseclass2i = {'Temporal':0, 'Contingency':1, 'Comparison':2, 'Expansion':3}
+
+    four_or_eleven = 11
+    if four_or_eleven == 4:
+        i2sense = i2senseclass
+        sense2i = senseclass2i
+        sense_idx = 1
+    elif four_or_eleven == 11:
+        i2sense = i2sensesecond
+        sense2i = sense2isecond
+        sense_idx = 0
 
     corpus_splitting = 2            # 1 for Lin and 2 for Ji
     max_sent_len = 80
@@ -45,18 +55,25 @@ class Config(object):
     discr_fc_dim = 1024
     discr_dropout = 0.1
 
+    kd = 1
+    thresh_high = 0.7
+    thresh_low = 0.5
+    alpha = 0.9
+
     seed = 666
     batch_size = 128
-    shuffle = True
-    lambda1 = 0.01
-    lr = 0.001
+    shuffle = False
+    lambda1 = 0.1
+    lr = 0.002
+    lr_t = 0.001
+    lr_d = 0.0001
     l2_penalty = 0
     grad_clip = 1
 
     pre_i_epochs = 250
     pre_a_epochs = 300
-    final_trian_epochs = 500
-    first_stage_epochs = 30
-    together_epochs = 500
+
+    first_stage_epochs = 8
+    together_epochs = 300
 
     logdir = './res/' + datetime.now().strftime('%B%d-%H:%M:%S')
